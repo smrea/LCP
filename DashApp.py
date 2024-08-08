@@ -6,6 +6,7 @@ from dash.dependencies import Input, Output
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots #for dual axes
 from datetime import datetime as dt
 import os
 
@@ -59,9 +60,9 @@ def create_pm25(monitor):
     #Update Plot sizing
     pm25_figure.update_layout(
         width = 1000,
-        height = 400,
+        height = 600,
         autosize = False,
-        margin = dict(t=0, b=0, l=0, r=0),
+        margin = dict(t=100, b=0, l=0, r=0),
         template = "plotly_white"
     )
     return pm25_figure
@@ -72,36 +73,8 @@ def create_temp(monitors):
     Creates a line graph that can have multiple Temperature graphs on it.
     
     This function accepts month from dropdown as type string.
-    Creates and returns a spatial heatmap.
     '''
-    
-    # month_num = f"{dt.strptime(month, '%B'):%m}"
-    # if month_num == '12':
-    #     temp_df = data.query(f" time_stamp >= '2023-{month_num}-01' & time_stamp < '2024-{str(int(month_num)-11)}-01' ")
-    # else:
-    #     temp_df = data.query(f" time_stamp >= '2023-{month_num}-01' & time_stamp < '2023-{str(int(month_num)+1)}-01' ")
 
-
-#     temp_figure = go.Figure()
-#     # temp_figure = px.density_mapbox(
-#     #     temp_df, lat = temp_df['Latitude'], lon = temp_df['Longitude'], 
-#     #     z = 'temperature',
-#     #     radius = 20,
-#     #     center = dict(lat = 39.077, lon = -77.654),
-#     #     zoom = 8,
-#     #     mapbox_style = 'open-street-map',
-#     #     color_continuous_scale = 'rainbow',
-#     #     range_color = [10,110],
-#     #     opacity = 0.5
-#     # )
-#     fig = go.Figure(go.Choroplethmapbox(geojson=counties, locations=df.fips, z=df.unemp,
-#                                     colorscale="Viridis", zmin=0, zmax=12,
-#                                     marker_opacity=0.5, marker_line_width=0))
-# fig.update_layout(mapbox_style="carto-positron",
-#                   mapbox_zoom=3, mapbox_center = {"lat": 37.0902, "lon": -95.7129})
-# fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-    
-    
     #temp_df = data.query(f"Name == '{monitors}' ")
 
     if len(monitors) == 0:
@@ -128,38 +101,52 @@ def create_temp(monitors):
             margin = dict(t=100, b=0, l=0, r=0),
             template = "plotly_white"
         )
-    # temp_figure = go.Figure()
-    # temp_figure = px.line(
-    #     temp_df,
-    #     x=temp_df['time_stamp'],
-    #     y=temp_df['temperature'],
-    #     labels={'x': 'Date', 'y':'Temperauture','title':'Temperature over 2023'},
-    #     color=temp_df['Name']
-    # )
     return temp_figure
 
-def create_humidity():
+def create_humidity(monitor):
     '''
-    Humidity is the concentration of water vapor present in the air. Water vapor, the gaseous state of water, 
-    is generally invisible to the human eye. Humidity indicates the likelihood for precipitation, dew, or fog 
-    to be present.
+    This function creates a humidity and temperature graph vs time. 
+    '''
+    temp_df=data.query(f"Name == '{monitor}' ")
 
-    create heat map? for each month have button?
-    '''
-    #temp_df=
-    
+    humid_figure=go.Figure()
+    humid_figure = make_subplots(specs=[[{"secondary_y": True}]])
+    humid_figure.add_trace(
+        go.Line(
+            #data_frame=temp_df,
+            x=temp_df['time_stamp'],
+            y=temp_df['humidity'],
+            name='Avg Relative Humidity (%)',
+            #labels={'x':'Date', 'y': 'Avg Relative Humidity (%)'},
+        ),
+        secondary_y=True
+    )
+    humid_figure.add_trace(
+        go.Line(
+            #data_frame=temp_df,
+            x=temp_df['time_stamp'],
+            y=temp_df['temperature'],
+            name='Temperature (F)',
+        ),
+        secondary_y=False
+    ),
+    humid_figure.update_yaxes(
+        title_text='date',
+        secondary_y=False,
+    ),
+    humid_figure.update_layout(
+        title_text = 'Humidity and Temp v. Time',
+        height     = 700,
+        template   = 'plotly',
+        legend     = dict(
+            orientation ='h',
+            xanchor ='center',
+            x       = .5,
+            yanchor = 'top',
+            y       = 1.09
+        )
+    )
     return humid_figure
-
-
-## Widgets
-# monitor = dcc.Dropdown(
-#     id = 'monitor_dropdown',
-#     options=[{"label":str(i),"value":str(i).lower()} for i in monitors], # could loop through set of monitors from df
-#     #options= set(data["Name"]),
-#     value = 'Roundhill', # default value
-#     placeholder = "Select a monitor",
-#     clearable = False
-# )
 
 
 ## Web App Layout
@@ -196,16 +183,6 @@ app.layout = html.Div([
         style = {'width': '50%'},
     ),
 
-    # dropdown for temp over months
-    # dcc.Dropdown(
-    #     id = 'month_dropdown',
-    #     options={i:i for i in data['time_stamp'].dt.month_name().unique()}, # i for i in ... because data['time_stamp'].dt.month.unique() returns unshapable np ndarray        
-    #     value='January',
-    #     placeholder='Select a month',
-    #     clearable=False,
-    #     style = {'width': '50%'}
-    # ),
-
     html.Div([
         dcc.Graph(
             id = 'pm25_scatter',
@@ -231,26 +208,33 @@ app.layout = html.Div([
     
     html.Div(
         children=[
-        # dcc.Dropdown(
-        #     id = 'month_dropdown',
-        #     options={i:i for i in data['time_stamp'].dt.month_name().unique()}, # i for i in ... because data['time_stamp'].dt.month.unique() returns unshapable np ndarray        
-        #     value='January',
-        #     placeholder='Select a month',
-        #     clearable=False,
-        #     style = {'width': '50%'}
-        # ),
-        dcc.Dropdown(
-            id='temp_dropmulti', # for temp line graph 
-            options= pd.unique(data["Name"]), #data["Name"].unique(), # lsit of monitors
-            value=['Lansdowne'], # needs to be list for multiselect i think. also 
-            placeholder='Select monitors',
-            clearable=True,
-            multi=True,
-        ),
-        dcc.Graph(
-            id = 'temp_fig',
-        )],
+            dcc.Dropdown(
+                id='temp_dropmulti', # for temp line graph 
+                options= pd.unique(data["Name"]), #data["Name"].unique(), # lsit of monitors
+                value=['Lansdowne'], # needs to be list for multiselect i think. also 
+                placeholder='Select monitors',
+                clearable=True,
+                multi=True,
+            ),
+            dcc.Graph(
+                id = 'temp_fig',
+            )],
     ),
+
+    html.Div(
+        children=[
+            dcc.Dropdown(
+                id='humid_drop', 
+                options= pd.unique(data["Name"]), 
+                value='Lansdowne', 
+                placeholder='Select monitor',
+                clearable=True,
+            ),
+            dcc.Graph(
+                id='humid_fig'
+            ),
+        ]
+    )
   
 ])
 
@@ -263,11 +247,8 @@ app.layout = html.Div([
 )
 def update_pm25(monitor):
     return create_pm25(monitor)
+
 ##############################    
-# @app.callback(
-#     Output(component_id='temp_fig', component_property='figure'),
-#     Input(component_id='month_dropdown', component_property='value')
-# )   
 @app.callback(
     Output(component_id='temp_fig', component_property='figure'), # pm2.5 scatter plot - choosing which monitor
     Input(component_id='temp_dropmulti', component_property='value'),
@@ -282,13 +263,14 @@ def update_temp(monitors):
     #     temp_fig = px.scatter(temp_dff, x=temp_dff['time_stamp'], y=temp_dff['temperature'], color=temp_dff['Name'])
         
     return create_temp(monitors)#temp_fig#create_temp(monitors)
+
 ##############################
-# @app.callback(
-#     Output(component_id='humid_fig', component_property='figure'), # pm2.5 scatter plot - choosing which monitor
-#     Input(component_id='monitor_dropdown', component_property='value')
-# )
-def update_pm25(monitor):
-    return create_pm25(monitor)
+@app.callback(
+    Output(component_id='humid_fig', component_property='figure'),
+    Input(component_id='humid_drop', component_property='value')
+)
+def update_humidity(monitor):
+    return create_humidity(monitor)
 
 
 
